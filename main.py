@@ -1,5 +1,6 @@
 import ffmpeg
 import os
+from tqdm import tqdm
 
 DIR = "videos"
 
@@ -41,7 +42,7 @@ def zoom_video(path, factor_percent=110):
             ffmpeg.input(path)
             .filter("scale", w=input_video_width * (factor_percent / 100), h=-1)
             .filter("crop", w=input_video_width, h=input_video_height)
-            .output(res_file_name, map_metadata=-1)
+            .output(res_file_name, map_metadata=-1, loglevel="quiet")
             .run()
         )
         return True
@@ -58,7 +59,9 @@ def flip_video(path):
         (
             ffmpeg.input(path)
             .filter("hflip")
-            .output(path.replace(".mp4", "_flipped.mp4"), map_metadata=-1)
+            .output(
+                path.replace(".mp4", "_flipped.mp4"), map_metadata=-1, loglevel="quiet"
+            )
             .run()
         )
         return True
@@ -86,12 +89,28 @@ def cleanup():
 
 
 def main():
+    # Before we start, let's remove all the files that were created by this script
     cleanup()
-    for file in os.listdir(DIR):
+
+    # First, zoom every video by 105%, 110% and 115%
+    print("Step 1/2: Zooming videos...")
+    files = tqdm(os.listdir(DIR))
+    for file in files:
         path = os.path.join(DIR, file)
+        files.set_description(f"Processing {file} - Zoom 105%")
         zoom_video(path, 105)
+        files.set_description(f"Processing {file} - Zoom 110%")
         zoom_video(path, 110)
+        files.set_description(f"Processing {file} - Zoom 115%")
         zoom_video(path, 115)
+
+    # Then, flip every video
+    print("Step 2/2: Flipping videos...")
+    files = tqdm(os.listdir(DIR))
+    for file in files:
+        path = os.path.join(DIR, file)
+        files.set_description(f"Processing {file} - Flip")
+        flip_video(path)
     print("Done!")
 
 

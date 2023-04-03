@@ -18,6 +18,12 @@ To install FFMpeg-Python, run this command
 
 `pip install ffmpeg-python`
 
+## Install tqdm
+
+To install tqdm, run this command
+
+`pip install tqdm`
+
 ## Runnning the script
 
 Place the videos in the "videos" folder - create it if needed. Then run the script.
