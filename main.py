@@ -1,48 +1,109 @@
 import ffmpeg
 import os
+import random
 from tqdm import tqdm
 
-DIR = "videos"
+DIR = "input"
+OUTPUT = "output"
 
-# The goal of this script is to process a video and to make multiple variants of it.
-# The variants are slightly different versions of the original video to make it undetectable by the algorithm.
-# The variants should not affect the quality of the video and should be as close as possible to the original video.
-# The variants are:
-# - zoom in the video
-# - Flip horizontally
-# - Add noise
-# - Add saturation
-# - Add contrast
-# - Add brightness
-# - Add sharpness
-# - Add hue
-# - Add gamma
+KEYWORDS = [
+    "becomingafemmefatale",
+    "femmefatale",
+    "seduction",
+    "manipulation",
+    "viral",
+    "power",
+    "foryou",
+    "fyp",
+    "darkfeminine",
+    "darkfemininity",
+    "darkfeminineenergy",
+    "darkfemme",
+    "maneater",
+    "confidence",
+    "siren",
+    "learnontiktok",
+]
 
 
-# Slightly zoom in the video, no animation
-# Zooming is a two step process. You want to:
+def get_metadata_dict(video_keywords_str):
+    metadata_title = video_keywords_str.replace("_", " ")
+    metadata_description = "#" + video_keywords_str.replace("_", " #")
+    metadata_keywords = video_keywords_str.replace("_", ",")
 
-# zoom the video by a 1.1x factor.
-# Crop the video back to its original size.
+    metadata_dict = {
+        "metadata:g:0": f"title={metadata_title}",
+        "metadata:g:1": f"description={metadata_description}",
+        "metadata:g:2": f"keywords={metadata_keywords}",
+    }
+    return metadata_dict
+
+
+def get_unique_name_and_metadata(str_effect=""):
+    """Generate a unique name for the video
+
+    Args:
+        str_group (str): Hash to append to the name related to the group of videos. Defaults to "".
+        str_effect (str, optional): String to append to the name related to the effect. Defaults to "".
+
+    Returns:
+        str: Unique name for the video
+    """
+
+    video_keywords = random.sample(KEYWORDS, 5)
+    unique_hash = random.randint(10000000, 99999999)
+    video_keywords_str = "_".join(video_keywords)
+    file_name = f"{unique_hash}_{video_keywords_str}_{str_effect}.mp4"
+
+    metadata_dict = get_metadata_dict(video_keywords_str)
+
+    return file_name, metadata_dict
+
+
+def get_video_dimensions(path):
+    """Get the dimensions of the video
+
+    Args:
+        path (str): Path to the video
+
+    Returns:
+        tuple: Height, Width dimensions of the video
+    """
+    probe = ffmpeg.probe(path)
+    video_stream = next(
+        (stream for stream in probe["streams"] if stream["codec_type"] == "video"), None
+    )
+    width = int(video_stream["width"])
+    height = int(video_stream["height"])
+    return width, height
 
 
 def zoom_video(path, factor_percent=110):
-    factor_str = str(factor_percent) + "%"
-    res_file_name = path.replace(".mp4", f"_zoomed_{factor_str}.mp4")
+    """Zoom in the video by a factor of factor_percent
+
+    Args:
+        path (str): Path to the video
+        factor_percent (int, optional): Zoom factor. Defaults to 110.
+
+    Returns:
+        bool: True if the video was successfully processed, False otherwise
+    """
+
+    factor_str = str(factor_percent)
+    video_name, metadata = get_unique_name_and_metadata(f"z_{factor_str}")
+    res_file_name = os.path.join(OUTPUT, video_name)
     try:
-        # First, get the video's width and height
-        probe = ffmpeg.probe(path)
-        video_stream = next(
-            (stream for stream in probe["streams"] if stream["codec_type"] == "video"),
-            None,
-        )
-        input_video_width = int(video_stream["width"])
-        input_video_height = int(video_stream["height"])
+        width, height = get_video_dimensions(path)
         (
             ffmpeg.input(path)
-            .filter("scale", w=input_video_width * (factor_percent / 100), h=-1)
-            .filter("crop", w=input_video_width, h=input_video_height)
-            .output(res_file_name, map_metadata=-1, loglevel="quiet")
+            .filter("scale", w=width * (factor_percent / 100), h=-1)
+            .filter("crop", w=width, h=height)
+            .output(
+                res_file_name,
+                loglevel="quiet",
+                map_metadata=-1,
+                **metadata,
+            )
             .run()
         )
         return True
@@ -51,16 +112,56 @@ def zoom_video(path, factor_percent=110):
         return False
 
 
-# - Flip horizontally
-
-
 def flip_video(path):
+    """Flip the video horizontally
+
+    Args:
+        path (str): Path to the video
+
+    Returns:
+        bool: True if the video was successfully processed, False otherwise
+    """
+
+    video_name, metadata = get_unique_name_and_metadata("f")
+    res_file_name = os.path.join(OUTPUT, video_name)
     try:
         (
             ffmpeg.input(path)
             .filter("hflip")
             .output(
-                path.replace(".mp4", "_flipped.mp4"), map_metadata=-1, loglevel="quiet"
+                res_file_name,
+                loglevel="quiet",
+                map_metadata=-1,
+                **metadata,
+            )
+            .run()
+        )
+        return True
+    except ffmpeg.Error as e:
+        print(e.stderr)
+        return False
+
+
+def copy_video(path):
+    """Copy the video
+
+    Args:
+        path (str): Path to the video
+
+    Returns:
+        bool: True if the video was successfully processed, False otherwise
+    """
+
+    video_name, metadata = get_unique_name_and_metadata("o")
+    res_file_name = os.path.join(OUTPUT, video_name)
+    try:
+        (
+            ffmpeg.input(path)
+            .output(
+                res_file_name,
+                loglevel="quiet",
+                map_metadata=-1,
+                **metadata,
             )
             .run()
         )
@@ -71,47 +172,24 @@ def flip_video(path):
 
 
 def cleanup():
-    filters = [
-        "_zoomed",
-        "_flipped",
-        "_noised",
-        "_saturated",
-        "_contrasted",
-        "_brightened",
-    ]
-    for file in os.listdir(DIR):
-        path = os.path.join(DIR, file)
-        for filter in filters:
-            if filter in path:
-                print("Removing: " + path)
-                os.remove(path)
-                break
+    """Delete all videos in the output folder"""
+    print("Cleaning up output folder...")
+    files = os.listdir(OUTPUT)
+    for file in files:
+        os.remove(os.path.join(OUTPUT, file))
 
 
 def main():
-    # Before we start, let's remove all the files that were created by this script
+    """Generate duplicate videos with different effects"""
     cleanup()
-
-    # First, zoom every video by 105%, 110% and 115%
-    print("Step 1/2: Zooming videos...")
-    files = tqdm(os.listdir(DIR))
-    for file in files:
-        path = os.path.join(DIR, file)
-        files.set_description(f"Processing {file} - Zoom 105%")
-        zoom_video(path, 105)
-        files.set_description(f"Processing {file} - Zoom 110%")
-        zoom_video(path, 110)
-        files.set_description(f"Processing {file} - Zoom 115%")
-        zoom_video(path, 115)
-
-    # Then, flip every video
-    print("Step 2/2: Flipping videos...")
-    files = tqdm(os.listdir(DIR))
-    for file in files:
-        path = os.path.join(DIR, file)
-        files.set_description(f"Processing {file} - Flip")
-        flip_video(path)
-    print("Done!")
+    print("Processing videos...")
+    videos_to_process = os.listdir(DIR)
+    for video in tqdm(videos_to_process):
+        video_path = os.path.join(DIR, video)
+        zoom_video(video_path, factor_percent=105)
+        zoom_video(video_path, factor_percent=110)
+        zoom_video(video_path, factor_percent=115)
+        flip_video(video_path)
 
 
 if __name__ == "__main__":
