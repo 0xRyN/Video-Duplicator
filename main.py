@@ -101,6 +101,7 @@ def zoom_video(path, factor_percent=110):
                 res_file_name,
                 loglevel="quiet",
                 map_metadata=-1,
+                map="0:a",  # map all audio streams
                 **metadata,
             )
             .run()
@@ -134,6 +135,7 @@ def flip_video(path):
                 res_file_name,
                 loglevel="quiet",
                 map_metadata=-1,
+                map="0:a",  # map all audio streams
                 **metadata,
             )
             .run()
