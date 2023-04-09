@@ -197,7 +197,7 @@ def main():
         video_path = os.path.join(DIR, video)
         copy_video(video_path)
         zoom_video(video_path, factor_percent=105)
-        zoom_video(video_path, factor_percent=115)
+        zoom_video(video_path, factor_percent=110)
 
     print("Flipping videos...")
     videos_to_process = os.listdir(OUTPUT)
