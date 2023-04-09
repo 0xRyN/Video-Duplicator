@@ -165,6 +165,7 @@ def copy_video(path):
                 res_file_name,
                 loglevel="quiet",
                 map_metadata=-1,
+                map="0:a",
                 **metadata,
             )
             .run()

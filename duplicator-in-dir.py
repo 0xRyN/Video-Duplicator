@@ -98,14 +98,16 @@ def zoom_video(path, factor_percent=110):
             .filter("crop", w=width, h=height)
             .output(
                 res_file_name,
-                loglevel="quiet",
+                loglevel="error",
+                map="0:a",
                 map_metadata=-1,
                 **metadata,
             )
             .run()
         )
-        return True
+        return res_file_name
     except ffmpeg.Error as e:
+        print("Error in zoom_video")
         print(e.stderr)
         return False
 
@@ -126,20 +128,23 @@ def flip_video(path):
     video_name, metadata = get_unique_name_and_metadata(f"{processed_video_effect}_f")
     parent_dir = os.path.dirname(path)
     res_file_name = os.path.join(parent_dir, video_name)
+    print(res_file_name)
     try:
         (
             ffmpeg.input(path)
             .filter("hflip")
             .output(
                 res_file_name,
-                loglevel="quiet",
+                loglevel="error",
+                map="0:a",
                 map_metadata=-1,
                 **metadata,
             )
             .run()
         )
-        return True
+        return res_file_name
     except ffmpeg.Error as e:
+        print("Error in flip_video")
         print(e.stderr)
         return False
 
@@ -157,60 +162,49 @@ def copy_video(path):
     video_name, metadata = get_unique_name_and_metadata("o")
     parent_dir = os.path.dirname(path)
     res_file_name = os.path.join(parent_dir, video_name)
+    print("Copying: ", res_file_name)
     try:
         (
             ffmpeg.input(path)
             .output(
                 res_file_name,
-                loglevel="quiet",
+                loglevel="error",
+                map="0:a",
                 map_metadata=-1,
                 **metadata,
             )
             .run()
         )
-        return True
+        return res_file_name
     except ffmpeg.Error as e:
+        print("Error in copy_video")
         print(e.stderr)
         return False
 
 
-def process_dir(path):
-    """Process the videos in a directory
-
-    Args:
-        path (str): Path to the directory
-    """
-    print(f"Processing directory {path}...")
-
-    print("Step 1. Zooming videos...")
-    videos_to_process = os.listdir(path)
-    for video in tqdm(videos_to_process):
-        video_path = os.path.join(path, video)
-        copy_video(video_path)
-        zoom_video(video_path, factor_percent=105)
-        zoom_video(video_path, factor_percent=110)
-        os.remove(video_path)
-
-    print("Step 2. Flipping videos...")
-    videos_to_process = os.listdir(path)
-    for video in tqdm(videos_to_process):
-        video_path = os.path.join(path, video)
-        flip_video(video_path)
-
-
-def walk():
-    # Will walk on the videos
-    for dirpath, dirnames, filenames in os.walk("videos"):
-        # Check if .mp4 files. If so, send it to the processing function
-        for file in filenames:
+def get_all_files():
+    # Put all mp3 files in a list
+    all_files_list = []
+    for root, dirs, files in os.walk("videos"):
+        for file in files:
             if file.lower().endswith(".mp4"):
-                process_dir(dirpath)
-                break
+                all_files_list.append(os.path.join(root, file))
+
+    return all_files_list
 
 
 def main():
     print("Starting...")
-    walk()
+    files = get_all_files()
+    for file in files:
+        fst_file = copy_video(file)
+        snd_file = zoom_video(file, factor_percent=105)
+        trd_file = zoom_video(file, factor_percent=110)
+        flip_video(fst_file)
+        flip_video(snd_file)
+        flip_video(trd_file)
+        os.remove(file)
+    print("Done!")
 
 
 if __name__ == "__main__":
