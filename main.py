@@ -43,7 +43,6 @@ def get_unique_name_and_metadata(str_effect=""):
     """Generate a unique name for the video
 
     Args:
-        str_group (str): Hash to append to the name related to the group of videos. Defaults to "".
         str_effect (str, optional): String to append to the name related to the effect. Defaults to "".
 
     Returns:
@@ -122,7 +121,10 @@ def flip_video(path):
         bool: True if the video was successfully processed, False otherwise
     """
 
-    video_name, metadata = get_unique_name_and_metadata("f")
+    # Flip is done after zooming, so we take the original video name and append the effect
+    processed_video_name = os.path.basename(path)
+    processed_video_effect = processed_video_name.split("_")[-1].split(".")[0]
+    video_name, metadata = get_unique_name_and_metadata(f"{processed_video_effect}_f")
     res_file_name = os.path.join(OUTPUT, video_name)
     try:
         (
@@ -179,16 +181,28 @@ def cleanup():
         os.remove(os.path.join(OUTPUT, file))
 
 
+def init():
+    """Create the output folder if it doesn't exist"""
+    if not os.path.exists(OUTPUT):
+        os.mkdir(OUTPUT)
+
+
 def main():
     """Generate duplicate videos with different effects"""
+    init()
     cleanup()
-    print("Processing videos...")
+    print("Zooming on videos...")
     videos_to_process = os.listdir(DIR)
     for video in tqdm(videos_to_process):
         video_path = os.path.join(DIR, video)
+        copy_video(video_path)
         zoom_video(video_path, factor_percent=105)
-        zoom_video(video_path, factor_percent=110)
         zoom_video(video_path, factor_percent=115)
+
+    print("Flipping videos...")
+    videos_to_process = os.listdir(OUTPUT)
+    for video in tqdm(videos_to_process):
+        video_path = os.path.join(OUTPUT, video)
         flip_video(video_path)
 
 
