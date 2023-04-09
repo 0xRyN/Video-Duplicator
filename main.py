@@ -113,6 +113,7 @@ def zoom_video(path, factor_percent=110):
 
 
 def flip_video(path):
+    print(f"Flipping {path}")
     """Flip the video horizontally
 
     Args:
@@ -133,7 +134,7 @@ def flip_video(path):
             .filter("hflip")
             .output(
                 res_file_name,
-                loglevel="quiet",
+                loglevel="error",
                 map_metadata=-1,
                 map="0:a",  # map all audio streams
                 **metadata,
@@ -142,7 +143,8 @@ def flip_video(path):
         )
         return True
     except ffmpeg.Error as e:
-        print(e.stderr)
+        print("Error while flipping video")
+        print(e)
         return False
 
 
@@ -165,7 +167,6 @@ def copy_video(path):
                 res_file_name,
                 loglevel="quiet",
                 map_metadata=-1,
-                map="0:a",
                 **metadata,
             )
             .run()

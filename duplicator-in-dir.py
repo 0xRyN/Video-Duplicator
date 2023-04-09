@@ -66,12 +66,17 @@ def get_video_dimensions(path):
     Returns:
         tuple: Height, Width dimensions of the video
     """
-    probe = ffmpeg.probe(path)
-    video_stream = next(
-        (stream for stream in probe["streams"] if stream["codec_type"] == "video"), None
-    )
-    width = int(video_stream["width"])
-    height = int(video_stream["height"])
+    try:
+        probe = ffmpeg.probe(path)
+        video_stream = next(
+            (stream for stream in probe["streams"] if stream["codec_type"] == "video"),
+            None,
+        )
+        width = int(video_stream["width"])
+        height = int(video_stream["height"])
+    except ffmpeg.Error as e:
+        print(f"Error in get_video_dimensions, file: {path}")
+        return -1, -1
     return width, height
 
 
@@ -92,6 +97,8 @@ def zoom_video(path, factor_percent=110):
     res_file_name = os.path.join(parent_dir, video_name)
     try:
         width, height = get_video_dimensions(path)
+        if width == -1 or height == -1:
+            return False
         (
             ffmpeg.input(path)
             .filter("scale", w=width * (factor_percent / 100), h=-1)
@@ -107,8 +114,7 @@ def zoom_video(path, factor_percent=110):
         )
         return res_file_name
     except ffmpeg.Error as e:
-        print("Error in zoom_video")
-        print(e.stderr)
+        print(f"Error in zoom_video, file: {path}")
         return False
 
 
@@ -144,8 +150,7 @@ def flip_video(path):
         )
         return res_file_name
     except ffmpeg.Error as e:
-        print("Error in flip_video")
-        print(e.stderr)
+        print(f"Error in flip_video, file: {path}")
         return False
 
 
@@ -162,14 +167,12 @@ def copy_video(path):
     video_name, metadata = get_unique_name_and_metadata("o")
     parent_dir = os.path.dirname(path)
     res_file_name = os.path.join(parent_dir, video_name)
-    print("Copying: ", res_file_name)
     try:
         (
             ffmpeg.input(path)
             .output(
                 res_file_name,
                 loglevel="error",
-                map="0:a",
                 map_metadata=-1,
                 **metadata,
             )
@@ -177,8 +180,7 @@ def copy_video(path):
         )
         return res_file_name
     except ffmpeg.Error as e:
-        print("Error in copy_video")
-        print(e.stderr)
+        print(f"Error in copy_video, file: {path}")
         return False
 
 
@@ -196,7 +198,9 @@ def get_all_files():
 def main():
     print("Starting...")
     files = get_all_files()
-    for file in files:
+    tqdm_iterator = tqdm(files)
+    for file in tqdm_iterator:
+        tqdm_iterator.set_description(f"Processing {file}")
         fst_file = copy_video(file)
         snd_file = zoom_video(file, factor_percent=105)
         trd_file = zoom_video(file, factor_percent=110)
